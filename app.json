@@ -1,10 +1,11 @@
 {
     "expo": {
-        "name": "mobile",
-        "slug": "mobile",
+        "name": "Tric Agent",
+        "slug": "tric-agent",
+        "description": "Tric Agent is a mobile application for Tric Delivery Agents.",
         "version": "1.0.0",
         "orientation": "portrait",
-        "icon": "./assets/images/icon.png",
+        "icon": "./assets/images/tric-thumb-light.png",
         "scheme": "myapp",
         "userInterfaceStyle": "automatic",
         "newArchEnabled": true,

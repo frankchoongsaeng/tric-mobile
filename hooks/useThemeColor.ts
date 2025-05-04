@@ -6,7 +6,7 @@
 import { TricColors } from '@/constants/Colors'
 import { useColorScheme } from '@/hooks/useColorScheme'
 
-export function useThemeColor() {
+export function useTricThemeColor() {
     const theme = useColorScheme() ?? 'light'
     return TricColors[theme]
 }
