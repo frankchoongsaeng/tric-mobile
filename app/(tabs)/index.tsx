@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { StyleSheet, View, TouchableOpacity, Image, FlatList, Platform, TextInput, Text } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import debounce from 'lodash/debounce'
@@ -59,6 +59,7 @@ export default function HomeScreen() {
     const [predictions, setPredictions] = useState<PlacePrediction[]>([])
     const [lastSelectedPlace, setLastSelectedPlace] = useState<PlacePrediction | null>(null)
     const [currentLocation, setCurrentLocation] = useState<{ lng: number; lat: number } | null>(null)
+    const dropoffLocationInputRef = useRef<TextInput>(null)
 
     const styles = useStyles()
 
@@ -105,14 +106,14 @@ export default function HomeScreen() {
             return
         }
 
-        await Location.getCurrentPositionAsync({})
+        return await Location.getCurrentPositionAsync()
             .then(loc => {
-                setPickupLocationSearch(CURRENT_LOCATION)
-                setPickupLocation({
+                setCurrentLocation({
                     lng: loc.coords.longitude,
                     lat: loc.coords.latitude
                 })
                 console.log(loc.coords)
+                return loc.coords
             })
             .catch(err => {
                 console.log(err)
@@ -126,7 +127,31 @@ export default function HomeScreen() {
 
         if (text !== '' && text !== CURRENT_LOCATION) {
             // set the location to the current location
-            debouncedSearch(pickupLocationSearch)
+            debouncedSearch(text)
+        } else if (text === CURRENT_LOCATION) {
+            if (currentLocation === null) {
+                await getCurrentLocation()
+            }
+
+            if (currentLocation !== null) {
+                setPickupLocationSearch(CURRENT_LOCATION)
+                setPickupLocation(currentLocation)
+                setPredictions([])
+            } else {
+                setPickupLocationSearch('')
+                setPickupLocation(null)
+            }
+        } else {
+            whichLocation = null
+            setPredictions([])
+        }
+    }
+
+    const handleDropoffLocationSearchChange = async (text: string) => {
+        setDropOffLocationSearch(text)
+
+        if (text !== '' && text !== CURRENT_LOCATION) {
+            debouncedSearch(text)
         } else if (text === CURRENT_LOCATION) {
             if (currentLocation === null) {
                 await getCurrentLocation()
@@ -134,13 +159,13 @@ export default function HomeScreen() {
 
             if (currentLocation !== null) {
                 console.log('current location is not null')
-                setPickupLocationSearch(CURRENT_LOCATION)
-                setPickupLocation(currentLocation)
+                setDropOffLocationSearch(CURRENT_LOCATION)
+                setDropOffLocation(currentLocation)
                 setPredictions([])
             } else {
                 console.log('current location is null')
-                setPickupLocationSearch('')
-                setPickupLocation(null)
+                setDropOffLocationSearch('')
+                setDropOffLocation(null)
             }
         } else {
             whichLocation = null
@@ -172,52 +197,81 @@ export default function HomeScreen() {
         }
     }, [pickupLocationSearch])
 
+    // trigger a search when the dropoff location search input changes
+    useEffect(() => {
+        if (dropOffLocationSearch !== CURRENT_LOCATION) {
+            debouncedSearch(dropOffLocationSearch)
+        }
+    }, [dropOffLocationSearch])
+
     // get current location
     useEffect(() => {
-        getCurrentLocation()
+        getCurrentLocation().then(loc => {
+            if (loc) {
+                setPickupLocation({ lat: loc.latitude, lng: loc.longitude })
+                setPickupLocationSearch(CURRENT_LOCATION)
+                dropoffLocationInputRef.current?.focus()
+            }
+        })
     }, [])
 
     return (
         <SafeAreaView style={{ flex: 1 }}>
             <View style={styles.formSection}>
                 <Text style={styles.title}>Calculate Delivery price</Text>
-                <View style={{ display: 'flex', alignItems: 'center', flexDirection: 'row', gap: 8 }}>
-                    <View style={styles.inputsContainer}>
-                        <View style={styles.inputWrapper}>
-                            <IconSymbol name='location-searching' style={styles.inputIcon} size={24} color='#333' />
-                            <TextInput
-                                style={{ ...styles.locationInputs, borderBottomWidth: 0.5, borderColor: '#E5E5E5' }}
-                                placeholder='Pick up point'
-                                placeholderTextColor='#999'
-                                value={pickupLocationSearch}
-                                onChangeText={handlePickupLocationSearchChange}
-                                onFocus={() => {
-                                    setPredictions([])
-                                    handlePickupLocationSearchChange(pickupLocationSearch)
-                                }}
-                            />
-                        </View>
-                        <View style={styles.inputWrapper}>
-                            <Feather name='search' style={styles.inputIcon} size={24} color='#333' />
-
-                            <TextInput
-                                style={styles.locationInputs}
-                                placeholder='Drop off location'
-                                placeholderTextColor='#999'
-                            />
-                        </View>
-                    </View>
-                    <View>
-                        <IconSymbol
-                            name='location-searching'
-                            style={{ ...styles.inputIcon, opacity: 0 }}
-                            size={24}
-                            color=''
+                <View style={styles.formRow}>
+                    <View style={styles.inputGroup}>
+                        <IconSymbol name='location-searching' style={styles.inputIcon} size={24} color='#333' />
+                        <TextInput
+                            style={styles.locationInputs}
+                            placeholder='Pick up location'
+                            placeholderTextColor='#999'
+                            value={pickupLocationSearch}
+                            onChangeText={handlePickupLocationSearchChange}
+                            onFocus={() => {
+                                whichLocation = 'pickup'
+                                setPredictions([])
+                                if (pickupLocationSearch === CURRENT_LOCATION) {
+                                    setPickupLocationSearch('')
+                                } else handlePickupLocationSearchChange(pickupLocationSearch)
+                            }}
                         />
                         <TouchableOpacity>
-                            <IconSymbol name='swap-vert' style={styles.inputIcon} size={24} color='#333' />
+                            <Image
+                                source={require('@/assets/images/map-icon.png')}
+                                style={{ height: 28, width: 28, objectFit: 'contain' }}
+                            />
                         </TouchableOpacity>
                     </View>
+                    <IconSymbol name='swap-vert' size={36} color='transparent' />
+                </View>
+                <View style={styles.formRow}>
+                    <View style={styles.inputGroup}>
+                        <Feather name='search' style={styles.inputIcon} size={24} color='#333' />
+                        <TextInput
+                            ref={dropoffLocationInputRef}
+                            style={styles.locationInputs}
+                            placeholder='Drop off location'
+                            placeholderTextColor='#999'
+                            onChangeText={handleDropoffLocationSearchChange}
+                            onFocus={() => {
+                                whichLocation = 'dropoff'
+                                setPredictions([])
+                                if (dropOffLocationSearch === CURRENT_LOCATION) {
+                                    setDropOffLocationSearch('')
+                                } else handleDropoffLocationSearchChange(dropOffLocationSearch)
+                            }}
+                        />
+                        <TouchableOpacity>
+                            <Image
+                                source={require('@/assets/images/map-icon.png')}
+                                style={{ height: 28, width: 28, objectFit: 'contain' }}
+                            />
+                        </TouchableOpacity>
+                    </View>
+                    <TouchableOpacity style={styles.swapIcon}>
+                        <IconSymbol name='swap-vert' size={36} color='#333' />
+                    </TouchableOpacity>
                 </View>
             </View>
 
@@ -274,30 +328,31 @@ function useStyles() {
             textAlign: 'center'
         },
         formSection: {
-            flexShrink: 0,
             backgroundColor: tricTheme.bodyBackground,
             padding: 16,
             paddingTop: 8
         },
-        label: {
-            fontSize: 16,
-            fontWeight: '500',
-            color: '#333',
-            marginBottom: 4
+        formRowAestheticWrapper: {
+            backgroundColor: tricTheme.lightGrey
         },
-        inputsContainer: {
+        formRow: {
+            display: 'flex',
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 8
+        },
+        inputGroup: {
+            display: 'flex',
+            flexDirection: 'row',
+            flex: 1,
+            alignItems: 'center',
             borderWidth: 2,
             borderColor: tricTheme.primary,
             borderRadius: 12,
-            overflow: 'hidden',
-            paddingEnd: 12,
-            flex: 1
-        },
-        inputWrapper: {
+            padding: 4,
+            paddingEnd: 8,
             fontSize: 16,
-            color: tricTheme.bodyText,
-            flexDirection: 'row',
-            alignItems: 'center'
+            color: tricTheme.bodyText
         },
         locationInputs: {
             flex: 1,
@@ -305,51 +360,14 @@ function useStyles() {
             fontSize: 16
         },
         inputIcon: {
-            padding: 8,
-            paddingHorizontal: 12,
+            padding: 4
+        },
+        swapIcon: {
+            display: 'flex',
+            alignItems: 'center',
             justifyContent: 'center',
-            alignItems: 'center'
-        },
-        chevronIcon: {
-            width: 20,
-            height: 20
-        },
-        checkButton: {
-            backgroundColor: '#0066FF',
-            borderRadius: 100,
-            padding: 16,
-            alignItems: 'center',
-            marginTop: 8
-        },
-        loadingContainer: {
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: 8
-        },
-        loadingIcon: {
-            width: 20,
-            height: 20
-        },
-        buttonText: {
-            color: '#fff',
-            fontSize: 16,
-            fontWeight: '500'
-        },
-        priceContainer: {
-            backgroundColor: '#F8F9FA',
-            padding: 16,
-            borderRadius: 12,
-            marginTop: 8
-        },
-        priceLabel: {
-            fontSize: 16,
-            color: '#333'
-            // marginBottom: 4
-        },
-        priceValue: {
-            // fontSize: 40,
-            fontWeight: '500',
-            color: '#333'
+            padding: 0,
+            paddingHorizontal: 0
         },
         dropdownContainer: {
             flex: 1,
