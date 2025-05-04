@@ -1,10 +1,10 @@
-import { StyleSheet, View, TouchableOpacity, Image, ScrollView, FlatList } from 'react-native'
-import { TextInput } from 'react-native'
-import { ThemedText } from '@/components/ThemedText'
-import { ThemedView } from '@/components/ThemedView'
+import { StyleSheet, View, TouchableOpacity, Image, FlatList } from 'react-native'
+import { TextInput, Text } from 'react-native'
 import { useState, useEffect, useCallback } from 'react'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import debounce from 'lodash/debounce'
+import MapComponent from '@/components/ui/MapComponent'
+import { IconSymbol } from '@/components/ui/IconSymbol'
 
 interface PlacePrediction {
     description: string
@@ -66,121 +66,84 @@ export default function HomeScreen() {
     }
 
     return (
-        <SafeAreaView>
-            <ScrollView>
-                <ThemedView style={styles.container}>
-                    <Image source={require('@/assets/images/tric-logo.png')} style={styles.logo} resizeMode='contain' />
-                    <ThemedText style={styles.title}>Calculate Your{'\n'}Delivery price</ThemedText>
-                    <View style={styles.formSection}>
-                        <ThemedText style={styles.label}>Pickup location</ThemedText>
-                        <View style={styles.inputContainer}>
-                            <TextInput
-                                style={styles.input}
-                                placeholder='Enter pick up location'
-                                placeholderTextColor='#999'
-                                value={pickupLocation}
-                                onChangeText={text => {
-                                    setPickupLocation(text)
-                                    setShowPredictions(true)
-                                }}
-                                onFocus={() => setShowPredictions(true)}
-                            />
-                            <TouchableOpacity
-                                style={styles.locationButton}
-                                onPress={() => setShowPredictions(!showPredictions)}
-                            >
-                                <Image source={require('@/assets/images/map-icon.png')} style={styles.locationIcon} />
-                            </TouchableOpacity>
-                        </View>
-
-                        {showPredictions && predictions.length > 0 && (
-                            <View style={styles.dropdownContainer}>
-                                <FlatList
-                                    data={predictions}
-                                    keyExtractor={item => item.place_id}
-                                    renderItem={({ item }) => (
-                                        <TouchableOpacity
-                                            style={styles.predictionItem}
-                                            onPress={() => handlePlaceSelect(item)}
-                                        >
-                                            <Image
-                                                source={require('@/assets/images/map-icon.png')}
-                                                style={styles.predictionIcon}
-                                            />
-                                            <ThemedText style={styles.predictionText}>{item.description}</ThemedText>
-                                        </TouchableOpacity>
-                                    )}
-                                    ItemSeparatorComponent={() => <View style={styles.separator} />}
-                                    nestedScrollEnabled
-                                />
-                            </View>
-                        )}
-
-                        <ThemedText style={styles.label}>Drop off location</ThemedText>
-                        <View style={styles.inputContainer}>
-                            <TextInput
-                                style={styles.input}
-                                placeholder='Enter delivery location'
-                                placeholderTextColor='#999'
-                            />
-                            <TouchableOpacity style={styles.locationButton}>
-                                <Image source={require('@/assets/images/map-icon.png')} style={styles.locationIcon} />
-                            </TouchableOpacity>
-                        </View>
-                        <ThemedText style={styles.label}>Package</ThemedText>
-                        <TouchableOpacity style={styles.packageSelector}>
-                            <ThemedText style={styles.packageText}>{packageSize}</ThemedText>
+        <SafeAreaView style={{ flex: 1 }}>
+            <View style={styles.formSection}>
+                <Text style={styles.title}>Calculate Delivery price</Text>
+                <View style={styles.inputsContainer}>
+                    <View style={styles.inputWrapper}>
+                        {/* <View style={styles.inputIcon}> */}
+                        <IconSymbol name='location-searching' style={styles.inputIcon} size={24} color='#333' />
+                        {/* </View> */}
+                        <TextInput
+                            style={{ ...styles.locationInputs, borderBottomWidth: 0.5, borderColor: '#E5E5E5' }}
+                            placeholder='Pick up point 1'
+                            placeholderTextColor='#999'
+                            value={pickupLocation}
+                            onChangeText={text => {
+                                setPickupLocation(text)
+                                setShowPredictions(true)
+                            }}
+                            onFocus={() => setShowPredictions(true)}
+                        />
+                    </View>
+                    <View style={styles.inputWrapper}>
+                        <View style={styles.inputIcon}>
                             <Image
                                 source={require('@/assets/images/chevron-down-icon.png')}
                                 style={styles.chevronIcon}
                             />
-                        </TouchableOpacity>
-                        <TouchableOpacity style={styles.checkButton} onPress={() => setIsLoading(true)}>
-                            {isLoading ? (
-                                <View style={styles.loadingContainer}>
-                                    <Image
-                                        source={require('@/assets/images/loading-icon.png')}
-                                        style={styles.loadingIcon}
-                                    />
-                                    <ThemedText style={styles.buttonText}>Check</ThemedText>
-                                </View>
-                            ) : (
-                                <ThemedText style={styles.buttonText}>Check</ThemedText>
-                            )}
-                        </TouchableOpacity>
-                        <View style={styles.priceContainer}>
-                            <ThemedText style={styles.priceLabel}>Price</ThemedText>
-                            <ThemedText type='title' style={styles.priceValue}>
-                                {price}
-                            </ThemedText>
                         </View>
+                        <TextInput
+                            style={styles.locationInputs}
+                            placeholder='Drop off location'
+                            placeholderTextColor='#999'
+                        />
                     </View>
-                </ThemedView>
-            </ScrollView>
+                    {showPredictions && predictions.length > 0 && (
+                        <View style={styles.dropdownContainer}>
+                            <FlatList
+                                data={predictions}
+                                keyExtractor={item => item.place_id}
+                                renderItem={({ item }) => (
+                                    <TouchableOpacity
+                                        style={styles.predictionItem}
+                                        onPress={() => handlePlaceSelect(item)}
+                                    >
+                                        <Image
+                                            source={require('@/assets/images/map-icon.png')}
+                                            style={styles.predictionIcon}
+                                        />
+                                        <Text style={styles.predictionText}>{item.description}</Text>
+                                    </TouchableOpacity>
+                                )}
+                                ItemSeparatorComponent={() => <View style={styles.separator} />}
+                                nestedScrollEnabled
+                            />
+                        </View>
+                    )}
+                </View>
+            </View>
+            <MapComponent></MapComponent>
         </SafeAreaView>
     )
 }
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        padding: 20,
-        backgroundColor: '#fff'
-    },
     logo: {
         width: 80,
         height: 40,
         marginBottom: 20
     },
     title: {
-        fontSize: 32,
-        fontWeight: '600',
         color: '#333',
-        marginBottom: 30,
-        lineHeight: 40
+        lineHeight: 40,
+        textAlign: 'center'
     },
     formSection: {
-        gap: 16
+        flexShrink: 0,
+        backgroundColor: '#fff',
+        padding: 16,
+        paddingTop: 8
     },
     label: {
         fontSize: 16,
@@ -188,19 +151,34 @@ const styles = StyleSheet.create({
         color: '#333',
         marginBottom: 4
     },
-    inputContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
+    inputsContainer: {
         borderWidth: 1,
         borderColor: '#E5E5E5',
         borderRadius: 12,
-        backgroundColor: '#fff'
+        overflow: 'hidden',
+        paddingEnd: 12
     },
-    input: {
+    inputWrapper: {
+        fontSize: 16,
+        color: '#333',
+        flexDirection: 'row',
+        alignItems: 'center'
+    },
+    locationInputs: {
         flex: 1,
-        padding: 16,
+        padding: 12,
+        paddingStart: 8,
+        marginStart: 8,
         fontSize: 16,
         color: '#333'
+    },
+    inputIcon: {
+        // width: 36,
+        // height: 36,
+        // backgroundColor: '#F8F9FA',
+        padding: 8,
+        justifyContent: 'center',
+        alignItems: 'center'
     },
     locationButton: {
         padding: 12
